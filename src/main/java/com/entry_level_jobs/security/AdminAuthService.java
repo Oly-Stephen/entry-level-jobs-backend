@@ -15,12 +15,15 @@ public class AdminAuthService {
         this.securityProperties = securityProperties;
     }
 
-    public boolean authenticate(String username, String password) {
+    public boolean authenticate(String email, String password) {
         SecurityProperties.AdminProperties admin = securityProperties.getAdmin();
-        if (admin == null || !StringUtils.hasText(admin.getUsername()) || !StringUtils.hasText(admin.getPassword())) {
+        if (admin == null || !StringUtils.hasText(admin.getEmail()) || !StringUtils.hasText(admin.getPassword())) {
             return false;
         }
-        return constantTimeEquals(admin.getUsername(), username) && constantTimeEquals(admin.getPassword(), password);
+        String expectedEmail = admin.getEmail().trim().toLowerCase();
+        String providedEmail = email == null ? null : email.trim().toLowerCase();
+        return constantTimeEquals(expectedEmail, providedEmail)
+                && constantTimeEquals(admin.getPassword(), password);
     }
 
     private boolean constantTimeEquals(String expected, String provided) {

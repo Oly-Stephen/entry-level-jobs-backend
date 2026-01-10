@@ -25,16 +25,53 @@ public class UserAccount {
     @Column(nullable = false, length = 255, unique = true)
     private String email;
 
+    @Column(nullable = false, length = 120)
+    private String displayName;
+
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private UserRole role;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
     @PrePersist
     void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = now;
         }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+        if (role == null) {
+            role = UserRole.USER;
+        }
+        if (displayName == null) {
+            displayName = email;
+        }
+        if (!active) {
+            active = true;
+        }
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

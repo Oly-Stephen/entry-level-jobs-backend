@@ -4,6 +4,7 @@ import com.entry_level_jobs.model.Job;
 import com.entry_level_jobs.repository.JobRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -13,10 +14,12 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Scheduler service that periodically fetches jobs from external APIs and saves entry-level jobs.
+ * Scheduler service that periodically fetches jobs from external APIs and saves
+ * entry-level jobs.
  */
 @Service
 @Slf4j
+@ConditionalOnProperty(value = "jobs.fetch.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class JobSchedulerService {
     private final JobFetchService jobFetchService;
     private final JobFilterService jobFilterService;
@@ -25,9 +28,9 @@ public class JobSchedulerService {
     private final long serviceDelayMs;
 
     public JobSchedulerService(JobFetchService jobFetchService,
-                               JobFilterService jobFilterService,
-                               JobRepository jobRepository,
-                               @Value("${jobs.fetch.service-delay-ms:500}") long serviceDelayMs) {
+            JobFilterService jobFilterService,
+            JobRepository jobRepository,
+            @Value("${jobs.fetch.service-delay-ms:500}") long serviceDelayMs) {
         this.jobFetchService = jobFetchService;
         this.jobFilterService = jobFilterService;
         this.jobRepository = jobRepository;
@@ -47,7 +50,11 @@ public class JobSchedulerService {
             List<Job> fetched = jobFetchService.fetchJobsFromApis();
 
             // small delay between services to be gentle on APIs
-            try { Thread.sleep(serviceDelayMs); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            try {
+                Thread.sleep(serviceDelayMs);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
 
             List<Job> filtered = jobFilterService.filterEntryLevelJobs(fetched);
             saveJobsTransactional(filtered);
@@ -80,4 +87,3 @@ public class JobSchedulerService {
         }
     }
 }
-

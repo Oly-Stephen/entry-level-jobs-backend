@@ -14,19 +14,19 @@ class AdminAuthServiceTest {
     @BeforeEach
     void setUp() {
         SecurityProperties properties = new SecurityProperties();
-        properties.getAdmin().setUsername("admin");
+        properties.getAdmin().setEmail("admin@example.com");
         properties.getAdmin().setPassword("secret");
         adminAuthService = new AdminAuthService(properties);
     }
 
     @Test
     void authenticateReturnsTrueForValidCredentials() {
-        assertTrue(adminAuthService.authenticate("admin", "secret"));
+        assertTrue(adminAuthService.authenticate("admin@example.com", "secret"));
     }
 
     @Test
     void authenticateReturnsFalseForInvalidCredentials() {
-        assertFalse(adminAuthService.authenticate("admin", "wrong"));
-        assertFalse(adminAuthService.authenticate("wrong", "secret"));
+        assertFalse(adminAuthService.authenticate("admin@example.com", "wrong"));
+        assertFalse(adminAuthService.authenticate("wrong@example.com", "secret"));
     }
 }

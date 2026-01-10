@@ -17,8 +17,9 @@ public class SecurityProperties {
 
     @Data
     public static class AdminProperties {
-        private String username;
+        private String email;
         private String password;
+        private String displayName = "Administrator";
     }
 
     @Data

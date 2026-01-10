@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * DTO for Remotive API response
- * Endpoint: https://remotive.io/api/remote-jobs
+ * Endpoint: https://remotive.com/api/remote-jobs
  */
 @Data
 @NoArgsConstructor
@@ -42,4 +42,3 @@ public class RemotiveJobResponse {
         private String jobType;
     }
 }
-

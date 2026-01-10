@@ -21,7 +21,7 @@ logging.level.com.entry_level_jobs=INFO
 logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
 
 # External APIs
-external.remotive.url=https://remotive.io/api/remote-jobs
+external.remotive.url=https://remotive.com/api/remote-jobs
 external.themuse.url=https://www.themuse.com/api/public/jobs
 external.arbeitnow.url=https://arbeitnow.com/api/job-board-api?page=
 

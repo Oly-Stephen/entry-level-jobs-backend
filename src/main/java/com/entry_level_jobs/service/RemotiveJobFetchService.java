@@ -27,9 +27,9 @@ public class RemotiveJobFetchService {
     private final long initialBackoffMs;
 
     public RemotiveJobFetchService(RestTemplate restTemplate,
-                                   @Value("${external.remotive.url:https://remotive.io/api/remote-jobs}") String remotiveUrl,
-                                   @Value("${external.fetch.max-retries:3}") int maxRetries,
-                                   @Value("${external.fetch.backoff.initial-ms:1000}") long initialBackoffMs) {
+            @Value("${external.remotive.url:https://remotive.com/api/remote-jobs}") String remotiveUrl,
+            @Value("${external.fetch.max-retries:3}") int maxRetries,
+            @Value("${external.fetch.backoff.initial-ms:1000}") long initialBackoffMs) {
         this.restTemplate = restTemplate;
         this.remotiveUrl = remotiveUrl;
         this.maxRetries = maxRetries;
@@ -88,7 +88,8 @@ public class RemotiveJobFetchService {
     }
 
     private LocalDateTime parseIsoToLocal(String iso) {
-        if (iso == null || iso.isBlank()) return null;
+        if (iso == null || iso.isBlank())
+            return null;
         try {
             Instant inst = Instant.parse(iso);
             return LocalDateTime.ofInstant(inst, ZoneId.systemDefault());
@@ -99,8 +100,8 @@ public class RemotiveJobFetchService {
     }
 
     private String stripHtmlTags(String html) {
-        if (html == null) return "";
+        if (html == null)
+            return "";
         return html.replaceAll("<[^>]*>", "").trim();
     }
 }
-

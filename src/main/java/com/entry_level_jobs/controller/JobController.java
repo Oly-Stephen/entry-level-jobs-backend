@@ -1,5 +1,8 @@
 package com.entry_level_jobs.controller;
 
+import com.entry_level_jobs.dto.JobWithClassificationDTO;
+import com.entry_level_jobs.dto.LocationOption;
+import com.entry_level_jobs.dto.LocationSearchResponse;
 import com.entry_level_jobs.dto.PaginatedResponse;
 import com.entry_level_jobs.model.Job;
 import com.entry_level_jobs.repository.JobRepository;
@@ -19,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * REST Controller for job management endpoints.
@@ -60,20 +64,25 @@ public class JobController {
      * @return PaginatedResponse with jobs and pagination metadata
      */
     @GetMapping
-    public ResponseEntity<PaginatedResponse<Job>> getAllJobs(
+    public ResponseEntity<PaginatedResponse<JobWithClassificationDTO>> getAllJobs(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
+        String keywordFilter = normalizeFilterValue(keyword);
+        String locationFilter = normalizeFilterValue(location);
+        boolean filterByKeyword = keywordFilter != null;
+        boolean filterByLocation = locationFilter != null;
+
         log.info("Retrieving jobs with pagination: keyword={}, location={}, page={}, size={}",
-                keyword, location, page, size);
+                keywordFilter, locationFilter, page, size);
 
         try {
             // Validate and sanitize pagination parameters
             if (!paginationService.validatePaginationParams(page, size)) {
                 log.warn("Invalid pagination parameters: page={}, size={}", page, size);
                 return ResponseEntity.badRequest().body(
-                        PaginatedResponse.error("Invalid pagination parameters",
+                        PaginatedResponse.<JobWithClassificationDTO>error("Invalid pagination parameters",
                                 "Page must be >= 0 and size must be between 1 and 100"));
             }
 
@@ -83,12 +92,15 @@ public class JobController {
             Page<Job> jobsPage;
 
             // Fetch based on filters
-            if (keyword != null && !keyword.isBlank()) {
-                log.debug("Filtering jobs by keyword: {}", keyword);
-                jobsPage = jobRepository.findByTitleKeyword(keyword, pageRequest);
-            } else if (location != null && !location.isBlank()) {
-                log.debug("Filtering jobs by location: {}", location);
-                jobsPage = jobRepository.findByLocationKeyword(location, pageRequest);
+            if (filterByKeyword && filterByLocation) {
+                log.debug("Filtering jobs by keyword={} and location={}", keywordFilter, locationFilter);
+                jobsPage = jobRepository.findByTitleAndLocationKeyword(keywordFilter, locationFilter, pageRequest);
+            } else if (filterByKeyword) {
+                log.debug("Filtering jobs by keyword: {}", keywordFilter);
+                jobsPage = jobRepository.findByTitleKeyword(keywordFilter, pageRequest);
+            } else if (filterByLocation) {
+                log.debug("Filtering jobs by location: {}", locationFilter);
+                jobsPage = jobRepository.findByLocationKeyword(locationFilter, pageRequest);
             } else {
                 log.debug("Retrieving all jobs");
                 jobsPage = jobRepository.findAll(pageRequest);
@@ -98,18 +110,67 @@ public class JobController {
                     jobsPage.getNumberOfElements(), page, jobsPage.getTotalElements());
 
             // Convert to paginated response using service
-            return ResponseEntity.ok(
-                    PaginatedResponse.success(
-                            jobsPage.getContent(),
-                            paginationService.toPaginationDTO(jobsPage)));
+            List<JobWithClassificationDTO> jobDtos = jobsPage.getContent().stream()
+                    .map(job -> JobWithClassificationDTO.from(job, jobFilterService.classifyJob(job)))
+                    .collect(Collectors.toList());
+
+            PaginatedResponse<JobWithClassificationDTO> response = PaginatedResponse.success(
+                    jobDtos,
+                    paginationService.toPaginationDTO(jobsPage));
+
+            if (filterByLocation) {
+                if (jobsPage.getTotalElements() > 0) {
+                    response.setMessage(buildLocationResultsMessage(locationFilter,
+                            filterByKeyword ? keywordFilter : null));
+                } else {
+                    response.setMessage(buildNoLocationResultsMessage(locationFilter));
+                }
+            }
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             log.error("Error retrieving jobs", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                    PaginatedResponse.error(
+                    PaginatedResponse.<JobWithClassificationDTO>error(
                             "Error retrieving jobs",
                             e.getMessage()));
         }
+    }
+
+    /**
+     * Provide a lightweight list of distinct locations for search/autocomplete.
+     * GET /api/jobs/locations?query=lagos&limit=5
+     */
+    @GetMapping("/locations")
+    public ResponseEntity<LocationSearchResponse> searchLocations(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "10") int limit) {
+        int sanitizedLimit = Math.max(1, Math.min(limit, 50));
+        String normalizedQuery = normalizeFilterValue(query);
+        PageRequest pageRequest = PageRequest.of(0, sanitizedLimit);
+
+        Page<LocationOption> locations = jobRepository.searchLocations(normalizedQuery, pageRequest);
+
+        if (locations.isEmpty()) {
+            return ResponseEntity.ok(LocationSearchResponse.empty(normalizedQuery));
+        }
+
+        List<LocationOption> options = locations.getContent();
+        List<String> legacyLocations = options.stream()
+                .map(LocationOption::getValue)
+                .collect(Collectors.toList());
+
+        LocationSearchResponse response = LocationSearchResponse.builder()
+                .success(true)
+                .query(normalizedQuery)
+                .options(options)
+                .locations(legacyLocations)
+                .returned(locations.getNumberOfElements())
+                .totalMatches(locations.getTotalElements())
+                .message("Select a location to narrow entry-level opportunities.")
+                .build();
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -221,5 +282,27 @@ public class JobController {
             response.put("error", "Error retrieving statistics: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
+
+    private String normalizeFilterValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String buildNoLocationResultsMessage(String location) {
+        return String.format(
+                "We couldn't find entry-level opportunities in %s yet. Try remote-friendly or nearby locations.",
+                location);
+    }
+
+    private String buildLocationResultsMessage(String location, String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return String.format("Showing entry-level opportunities available in %s.", location);
+        }
+        return String.format("Showing entry-level opportunities in %s matching \"%s\".",
+                location, keyword);
     }
 }

@@ -1,13 +1,13 @@
-package com.entry_level_jobs.dto;
+package com.entry_level_jobs.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class AdminLoginRequest {
-    @NotBlank
+public class LoginRequest {
     @Email
+    @NotBlank
     private String email;
 
     @NotBlank
