@@ -30,6 +30,11 @@ $env:SECURITY_JWT_SECRET = "use-a-long-random-string"
 
 You can also copy `src/main/resources/application-example.properties` to `src/main/resources/application.properties` (gitignored) for local development and replace the placeholder values. Never commit the real file.
 
+### Railway/PostgreSQL production profile
+
+- A committed prod configuration lives at [src/main/resources/application-prod.properties](src/main/resources/application-prod.properties). It activates when the `prod` profile is enabled and points the datasource at the Railway public proxy (`maglev.proxy.rlwy.net:18636`) with SSL required. Override the embedded username/password by exporting `SPRING_DATASOURCE_*` (or `DB_*`) environment variables in your deployment platform.
+- To launch locally against Railway, run `./mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=prod`, or set `SPRING_PROFILES_ACTIVE=prod` before starting the app. The same flag applies when packaging (`./mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=prod`).
+
 ## Build & run
 
 ```powershell
